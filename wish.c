@@ -7,67 +7,71 @@
 #include <sys/wait.h> // waitpid
 
 
+int execute_command(char *line) {
+    printf("EXECUTE!! %s\n", line);
+
+    //   if (strcmp(exit, line) == 0) {
+    //     break;
+    //   } else {
+    //     printf("%i", strcmp(exit, line));
+
+    return 0;
+}
+
+
 int main(int argc, char *argv[]) {
   
-  // const char exit[] = "exit";
-  int id = 1;
-  // int error_code;
+    // const char exit[] = "exit";
+    int id = 1;
+    int error_code = 0;
 
-  char *line = NULL;
-  size_t len = 0;
-
-  while (id) {
+    char *line = NULL;
+    size_t len = 0;
 
     printf("wish> ");
     getline(&line, &len, stdin);
 
-  //   if (strcmp(exit, line) == 0) {
-  //     break;
-  //   } else {
-  //     printf("%i", strcmp(exit, line));
-  //     id = fork();
+      
+    id = fork();
 
-  //     if (id > 0) {
-  //       waitpid(id, NULL, 0);
-  //     } else if (id == 0) {
+    if (id > 0) {
+        waitpid(id, NULL, 0);
+    } else if (id == 0) {
+        execute_command(line);
+    } else {
+        error_code = -1;
+    }
 
-  //       //build-in_programms
-  //       //exit -> exit(0)
-  //       //cd <arg?> -> chdir(<args?>)
-  //       //path <args> -> set path of the shell (instead
-  //       //   of /bin /usr/bin)
-
-  //       // commands-in-path
-  //       // check bin
-  //       // access("/bin/ls", X_OK)
-  //       // /usr/bin/l
-
-  //       // redirection
-  //       // > print nothing on the screen print in file
-  //       // (overwrite)
-  //       // no redirection for build ups
-  //       // no redirection chains
-
-  //       // parallel commands
-  //       // & execute commands without waiting one-by-one
-  //       // but execute waiting whem simultaneously exec
-
-  //       // char error_message[30] = "An error has occurred\n";
-  //       // write(STDERR_FILENO, error_message, strlen(error_message)); 
-  //       // CATCH ALL SYNTAX ERRORS EITHER
+    if (error_code) {
+        printError();
+        return id;
+    }
 
 
+      //       //build-in_programms
+      //       //exit -> exit(0)
+      //       //cd <arg?> -> chdir(<args?>)
+      //       //path <args> -> set path of the shell (instead
+      //       //   of /bin /usr/bin)
 
-  //       error_code = 1; // execv(line);
-  //     } else {
-  //       error_code = -1;
-  //     }
-  //     if (error_code) {
-  //       printf("ERROR, %i\n", error_code);
-  //       return id;
-  //     }
-  //   }
-  }
+      //       // commands-in-path
+      //       // check bin
+      //       // access("/bin/ls", X_OK)
+      //       // /usr/bin/l
 
-  return 0;
+      //       // redirection
+      //       // > print nothing on the screen print in file
+      //       // (overwrite)
+      //       // no redirection for build ups
+      //       // no redirection chains
+
+      //       // parallel commands
+      //       // & execute commands without waiting one-by-one
+      //       // but execute waiting whem simultaneously exec
+
+      //       // char error_message[30] = "An error has occurred\n";
+      //       // write(STDERR_FILENO, error_message, strlen(error_message)); 
+      //       // CATCH ALL SYNTAX ERRORS EITHER
+
+    return 0;
 }
