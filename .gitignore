@@ -1,0 +1,7 @@
+.settings
+run-tests.sh
+test-wish.sh
+tests-out/
+tests/
+wish
+wish.h
