@@ -13,26 +13,34 @@ struct ConsoleCommand {
     int args_number;
 };
 const char EXIT_COMMAND[] = "exit";
+const char EXIT_COMMAND_ENTER[] = "exit\n";
+
+int PRINT_LOGS = 0;
+int PRINT_DEBUG = 1;
 
 
 struct ConsoleCommand parse_command(const char * const line) {
 
-    printf("parse_command got: '%s'\n", line);
-
-    char *line_editable = malloc(sizeof(char) * (strlen(line)));
+    char *line_editable = malloc(sizeof(char) * strlen(line));
     strcpy(line_editable, line);
+
+    if (strlen(line) != 0 && line_editable[strlen(line) - 1] == '\n'){
+        line_editable[strlen(line) - 1] = '\0';
+    }
+
+    if (PRINT_LOGS) printf("parse_command got: '%s'\n", line_editable);
 
     char *delim = " ";
     char default_path[] = "/bin/";
     char *path = default_path;
 
     char *command_token = strtok(line_editable, delim);
-    printf("got command_token '%s' for execution\n", command_token);
+    if (PRINT_LOGS) printf("got command_token '%s' for execution\n", command_token);
 
     char *command = malloc(sizeof(char) * (strlen(path) + strlen(command_token)));
     strcpy(command, path);
     strcat(command, command_token);
-    printf("command '%s' in '%p' is generated\n", command, command);
+    if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", command, command);
 
 
     int args_number = 0;
@@ -43,9 +51,10 @@ struct ConsoleCommand parse_command(const char * const line) {
 
         if (command_token != NULL) {
             char *arg = malloc(sizeof(char) * strlen(command_token));
+            strcpy(arg, command_token);
             args[args_number++] = arg;
 
-            printf("got %i common token: %s\n", args_number, command_token);
+            if (PRINT_LOGS) printf("got %i command token in '%p': %s\n", args_number, arg, arg);
         }
     } while(command_token != NULL);
 
@@ -53,96 +62,102 @@ struct ConsoleCommand parse_command(const char * const line) {
 
     struct ConsoleCommand result;
     result.command = command;
-    result.args = malloc(sizeof(char*) * (args_number + 1));
+
+    result.args = malloc(sizeof(char*) * (args_number + 2));
+    result.args[0] = result.command;
     for (int i = 0;i < args_number;i++) {
-        result.args[i] = args[i];
+        result.args[i + 1] = args[i];
     }
-    result.args[args_number] = NULL;
+    result.args[args_number + 1] = NULL;
     result.args_number = args_number;
 
     return result;
 }
 
 
+int execv_in_thread(const char * const command, char * const * const args) {
+    int id = fork();
+
+    if (id > 0) {
+        waitpid(id, NULL, 0);
+        return 0;
+    } else if (id == 0) {
+        return execv(command, args);
+    } else {
+        if (PRINT_LOGS) printf("ERROROROROROROROR\n");
+        return -1;
+    }
+}
+
+
 int execute_command(const char * const line) {
+    if (strcmp(EXIT_COMMAND, line) == 0 || strcmp(EXIT_COMMAND_ENTER, line) == 0) {
+        if (PRINT_LOGS) printf("got exit command\n");
+        
+        return -1;
+    } else {
+        struct ConsoleCommand command = parse_command(line);
 
-    struct ConsoleCommand command = parse_command(line);
+        if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
 
-    printf("command for execution: '%s' in '%p' \n", command.command, command.command);
-    printf("DEBUG: %s", command.args[0]);
+        for (int i = 0;i < command.args_number + 1;i++) {
+            if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
+        }
+        if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
-    int result = execv(command.command, command.args);
-    printf("command execution result code: %i\n", result);
+        int result = execv_in_thread(command.command, command.args);
+        if (PRINT_LOGS) printf("command execution result code: %i\n", result);
 
-    //   if (strcmp(exit, line) == 0) {
-    //     break;
-    //   } else {
-    //     printf("%i", strcmp(exit, line));
-
-    return 0;
+        return result;
+    }
 }
 
 
 int main(int argc, char *argv[]) {
 
-    // const char command_test[] = "ls -ll";
-
-    // execute_command(command_test);
-
-  
-    // 
-    int id = 1;
-    int error_code = 0;
+    int execution_code = 0;
 
     char *line = NULL;
     size_t len = 0;
 
-    printf("wish> ");
-    getline(&line, &len, stdin);
+    while(execution_code == 0) {
+        printf("wish> ");
+        getline(&line, &len, stdin);
+        if (PRINT_LOGS) printf("get command '%s'\n", line);
 
-      
-    // id = fork();
+        execution_code = execute_command(line);
+        if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
+    }
 
-    execute_command(line);
-
-    // if (id > 0) {
-    //     waitpid(id, NULL, 0);
-    // } else if (id == 0) {
-    //     execute_command(line);
-    // } else {
-    //     error_code = -1;
-    // }
-
-    if (error_code) {
+    if (execution_code > 0) {
         printError();
-        return id;
     }
 
 
-      //       //build-in_programms
-      //       //exit -> exit(0)
-      //       //cd <arg?> -> chdir(<args?>)
-      //       //path <args> -> set path of the shell (instead
-      //       //   of /bin /usr/bin)
+    //       //build-in_programms
+    //       //exit -> exit(0)
+    //       //cd <arg?> -> chdir(<args?>)
+    //       //path <args> -> set path of the shell (instead
+    //       //   of /bin /usr/bin)
 
-      //       // commands-in-path
-      //       // check bin
-      //       // access("/bin/ls", X_OK)
-      //       // /usr/bin/l
+    //       // commands-in-path
+    //       // check bin
+    //       // access("/bin/ls", X_OK)
+    //       // /usr/bin/l
 
-      //       // redirection
-      //       // > print nothing on the screen print in file
-      //       // (overwrite)
-      //       // no redirection for build ups
-      //       // no redirection chains
+    //       // redirection
+    //       // > print nothing on the screen print in file
+    //       // (overwrite)
+    //       // no redirection for build ups
+    //       // no redirection chains
 
-      //       // parallel commands
-      //       // & execute commands without waiting one-by-one
-      //       // but execute waiting whem simultaneously exec
+    //       // parallel commands
+    //       // & execute commands without waiting one-by-one
+    //       // but execute waiting whem simultaneously exec
 
-      //       // char error_message[30] = "An error has occurred\n";
-      //       // write(STDERR_FILENO, error_message, strlen(error_message)); 
-      //       // CATCH ALL SYNTAX ERRORS EITHER
+    //       // char error_message[30] = "An error has occurred\n";
+    //       // write(STDERR_FILENO, error_message, strlen(error_message)); 
+    //       // CATCH ALL SYNTAX ERRORS EITHER
 
     return 0;
 }
