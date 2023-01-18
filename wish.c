@@ -15,8 +15,29 @@ struct ConsoleCommand {
 const char EXIT_COMMAND[] = "exit";
 const char EXIT_COMMAND_ENTER[] = "exit\n";
 
-int PRINT_LOGS = 0;
-int PRINT_DEBUG = 1;
+const int PRINT_LOGS = 1;
+const int PRINT_DEBUG = 1;
+
+char* bin_path_list[] = {"/bin/", NULL};
+
+
+char* make_build_in_command(const char * const command_token) {
+
+    int i = 0;
+
+    while(bin_path_list[i] != NULL) {
+        char *command = malloc(sizeof(char) * (strlen(bin_path_list[i]) + strlen(command_token)));
+
+        strcpy(command, bin_path_list[i]);
+        strcat(command, command_token);
+
+        return command;
+
+        i++;
+    }
+
+    return NULL;
+}
 
 
 struct ConsoleCommand parse_command(const char * const line) {
@@ -31,17 +52,11 @@ struct ConsoleCommand parse_command(const char * const line) {
     if (PRINT_LOGS) printf("parse_command got: '%s'\n", line_editable);
 
     char *delim = " ";
-    char default_path[] = "/bin/";
-    char *path = default_path;
-
     char *command_token = strtok(line_editable, delim);
     if (PRINT_LOGS) printf("got command_token '%s' for execution\n", command_token);
 
-    char *command = malloc(sizeof(char) * (strlen(path) + strlen(command_token)));
-    strcpy(command, path);
-    strcat(command, command_token);
+    char *command = make_build_in_command(command_token);
     if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", command, command);
-
 
     int args_number = 0;
     char *args[1000] = {};
@@ -134,11 +149,11 @@ int main(int argc, char *argv[]) {
     }
 
 
-    //       //build-in_programms
-    //       //exit -> exit(0)
-    //       //cd <arg?> -> chdir(<args?>)
-    //       //path <args> -> set path of the shell (instead
-    //       //   of /bin /usr/bin)
+    //       // build-in_programms
+    //       // exit -> exit(0)
+    //       // cd <arg?> -> chdir(<args?>)
+    //       // path <args> -> set path of the shell (instead
+    //       //     of /bin /usr/bin)
 
     //       // commands-in-path
     //       // check bin
