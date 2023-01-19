@@ -24,6 +24,7 @@ char* bin_path_list[] = {"/bin/", NULL};
 char* make_build_in_command(const char * const command_token) {
 
     int i = 0;
+    FILE *file;
 
     while(bin_path_list[i] != NULL) {
         char *command = malloc(sizeof(char) * (strlen(bin_path_list[i]) + strlen(command_token)));
@@ -31,9 +32,13 @@ char* make_build_in_command(const char * const command_token) {
         strcpy(command, bin_path_list[i]);
         strcat(command, command_token);
 
-        return command;
-
-        i++;
+        if ((file = fopen(command,"r")) != NULL) {
+            fclose(file);
+            return command;
+        } else {
+            i++;
+            if (PRINT_LOGS) printf("%s file doesn't exists\n", command);
+        }
     }
 
     return NULL;
@@ -41,6 +46,8 @@ char* make_build_in_command(const char * const command_token) {
 
 
 struct ConsoleCommand parse_command(const char * const line) {
+
+    struct ConsoleCommand result;
 
     char *line_editable = malloc(sizeof(char) * strlen(line));
     strcpy(line_editable, line);
@@ -57,6 +64,10 @@ struct ConsoleCommand parse_command(const char * const line) {
 
     char *command = make_build_in_command(command_token);
     if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", command, command);
+    if (command == NULL) {
+        result.command = NULL;
+        return result;
+    }
 
     int args_number = 0;
     char *args[1000] = {};
@@ -75,7 +86,6 @@ struct ConsoleCommand parse_command(const char * const line) {
 
     free(line_editable);
 
-    struct ConsoleCommand result;
     result.command = command;
 
     result.args = malloc(sizeof(char*) * (args_number + 2));
@@ -114,6 +124,9 @@ int execute_command(const char * const line) {
         struct ConsoleCommand command = parse_command(line);
 
         if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
+        if (command.command == NULL) {
+            return 1;
+        }
 
         for (int i = 0;i < command.args_number + 1;i++) {
             if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
