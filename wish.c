@@ -183,18 +183,24 @@ int main(int argc, char *argv[]) {
     char *line = NULL;
     size_t len = 0;
 
+    FILE* file;
+    file = fopen("./REMOVE_ME.txt", "a");
+
     while(execution_code <= 0) {
         printf("wish> ");
         getline(&line, &len, stdin);
-        if (PRINT_LOGS) printf("get command '%s'\n", line);
 
-        execution_code = execute_command(line);
-        if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
+        fprintf(file, "%s\n\n", line);
 
-        if (execution_code < 0) {
-            printError();
-        }
+        // if (PRINT_LOGS) printf("get command '%s'\n", line);
+
+        // execution_code = execute_command(line);
+        // if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
+
+        if (strcmp(EXIT_COMMAND, line) == 0 || strcmp(EXIT_COMMAND_ENTER, line) == 0) break;
     }
+
+    fclose(file);
 
 
     //       // build-in_programms
