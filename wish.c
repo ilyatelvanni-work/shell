@@ -19,6 +19,7 @@ const int PRINT_LOGS = 1;
 const int PRINT_DEBUG = 1;
 
 char* bin_path_list[] = {"/bin/", NULL};
+const char REDIRECTION_ARG[] = ">";
 
 
 char* make_build_in_command(const char * const command_token) {
@@ -48,7 +49,6 @@ char* make_build_in_command(const char * const command_token) {
 struct ConsoleCommand parse_command(const char * const line) {
 
     struct ConsoleCommand result;
-    result.redirections = NULL;
 
     char *line_editable = malloc(sizeof(char) * strlen(line));
     strcpy(line_editable, line);
@@ -67,25 +67,44 @@ struct ConsoleCommand parse_command(const char * const line) {
     if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", command, command);
     if (command == NULL) {
         result.command = NULL;
+        free(line_editable);
         return result;
     }
 
     char *args[1000] = {};
+    char *redirections[1000] = {};
     int args_number = 0;
+    int redirection_number = 0;
+    int redirection_arg = 0;
     
     do {
         command_token = strtok(NULL, delim);
 
         if (command_token != NULL) {
-            char *arg = malloc(sizeof(char) * strlen(command_token));
-            strcpy(arg, command_token);
-            args[args_number++] = arg;
+            if (strcmp(REDIRECTION_ARG, command_token)) {
+                char *arg = malloc(sizeof(char) * strlen(command_token));
+                strcpy(arg, command_token);
 
-            if (PRINT_LOGS) printf("got %i command token in '%p': %s\n", args_number, arg, arg);
+                if (redirection_arg) {
+                    redirections[redirection_number++] = arg;
+                    redirection_arg = 0;
+                    if (PRINT_LOGS) printf("got %i redirection token in '%p': %s\n", args_number, arg, arg);
+                } else {
+                    args[args_number++] = arg;
+                    if (PRINT_LOGS) printf("got %i command token in '%p': %s\n", args_number, arg, arg);
+                }
+            } else {
+                redirection_arg = 1;
+            }
         }
     } while(command_token != NULL);
 
     free(line_editable);
+
+    if (redirection_arg == 1) {
+        result.command = NULL;
+        return result;
+    }
 
     result.command = command;
 
@@ -96,6 +115,12 @@ struct ConsoleCommand parse_command(const char * const line) {
     }
     result.args[args_number + 1] = NULL;
 
+    result.redirections = malloc(sizeof(char*) * (redirection_number + 1));
+    for (int i = 0;i < redirection_number;i++) {
+        result.redirections[i] = redirections[i];
+    }
+    result.redirections[redirection_number] = NULL;
+
     return result;
 }
 
@@ -104,9 +129,14 @@ int execv_in_thread(const char * const command, char * const * const args) {
     int id = fork();
 
     if (id > 0) {
-        waitpid(id, NULL, 0);
-        return 0;
+        id = waitpid(id, NULL, 0);
+        if (id == -1) {
+            return -1;
+        } else {
+            return 0;
+        }
     } else if (id == 0) {
+        // in case of redirection we have to intercept output
         return execv(command, args);
     } else {
         if (PRINT_LOGS) printf("ERROROROROROROROR\n");
@@ -119,20 +149,23 @@ int execute_command(const char * const line) {
     if (strcmp(EXIT_COMMAND, line) == 0 || strcmp(EXIT_COMMAND_ENTER, line) == 0) {
         if (PRINT_LOGS) printf("got exit command\n");
         
-        return -1;
+        return 1;
     } else {
         struct ConsoleCommand command = parse_command(line);
 
         if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
         if (command.command == NULL) {
-            return 1;
+            return -1;
         }
 
         for (int i = 0;1;i++) {
             if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
             if (command.args[i] == NULL) break;
         }
-        // if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection is '%s' in '%p", command.redirection, command.redirection);
+        for (int i = 0;1;i++) {
+            if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection '%i' in '%p': '%s'\n", i, command.redirections[i], command.redirections[i]);
+            if (command.redirections[i] == NULL) break;
+        }
         if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
         int result = execv_in_thread(command.command, command.args);
@@ -150,17 +183,17 @@ int main(int argc, char *argv[]) {
     char *line = NULL;
     size_t len = 0;
 
-    while(execution_code == 0) {
+    while(execution_code <= 0) {
         printf("wish> ");
         getline(&line, &len, stdin);
         if (PRINT_LOGS) printf("get command '%s'\n", line);
 
         execution_code = execute_command(line);
         if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
-    }
 
-    if (execution_code > 0) {
-        printError();
+        if (execution_code < 0) {
+            printError();
+        }
     }
 
 
