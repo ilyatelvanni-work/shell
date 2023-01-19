@@ -10,7 +10,7 @@
 struct ConsoleCommand {
     char* command;
     char** args;
-    int args_number;
+    char** redirections;
 };
 const char EXIT_COMMAND[] = "exit";
 const char EXIT_COMMAND_ENTER[] = "exit\n";
@@ -48,6 +48,7 @@ char* make_build_in_command(const char * const command_token) {
 struct ConsoleCommand parse_command(const char * const line) {
 
     struct ConsoleCommand result;
+    result.redirections = NULL;
 
     char *line_editable = malloc(sizeof(char) * strlen(line));
     strcpy(line_editable, line);
@@ -69,8 +70,8 @@ struct ConsoleCommand parse_command(const char * const line) {
         return result;
     }
 
-    int args_number = 0;
     char *args[1000] = {};
+    int args_number = 0;
     
     do {
         command_token = strtok(NULL, delim);
@@ -94,7 +95,6 @@ struct ConsoleCommand parse_command(const char * const line) {
         result.args[i + 1] = args[i];
     }
     result.args[args_number + 1] = NULL;
-    result.args_number = args_number;
 
     return result;
 }
@@ -128,9 +128,11 @@ int execute_command(const char * const line) {
             return 1;
         }
 
-        for (int i = 0;i < command.args_number + 1;i++) {
+        for (int i = 0;1;i++) {
             if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
+            if (command.args[i] == NULL) break;
         }
+        // if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection is '%s' in '%p", command.redirection, command.redirection);
         if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
         int result = execv_in_thread(command.command, command.args);
