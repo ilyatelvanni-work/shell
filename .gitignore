@@ -5,3 +5,5 @@ tests-out/
 tests/
 wish
 wish.h
+*gitignore_me*
+*gitignoreme*

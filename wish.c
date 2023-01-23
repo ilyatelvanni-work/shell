@@ -15,8 +15,8 @@ struct ConsoleCommand {
 const char EXIT_COMMAND[] = "exit";
 const char EXIT_COMMAND_ENTER[] = "exit\n";
 
-const int PRINT_LOGS = 1;
-const int PRINT_DEBUG = 1;
+const int PRINT_LOGS = 0;
+const int PRINT_DEBUG = 0;
 
 char* bin_path_list[] = {"/bin/", NULL};
 const char REDIRECTION_ARG[] = ">";
@@ -175,9 +175,7 @@ int execute_command(const char * const line) {
     }
 }
 
-
-int main(int argc, char *argv[]) {
-
+int execute_interactive_mode() {
     int execution_code = 0;
 
     char *line = NULL;
@@ -196,6 +194,47 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    return 0;
+}
+
+int execute_batch_mode(const char * const source_path) {
+    int execution_code = 0;
+
+    FILE *source = fopen(source_path, "r");
+
+    if (source == NULL) {
+        printError();
+    } else {
+        char *line = NULL;
+        size_t len = 0;
+        ssize_t read;
+
+        while ((execution_code <= 0) && ((read = getline(&line, &len, source)) != -1)) {
+            if (PRINT_LOGS) printf("get command '%s'\n", line);
+            
+            execution_code = execute_command(line);
+            
+            if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
+
+            if (execution_code < 0) {
+                printError();
+            }
+        }
+
+        fclose(source);
+    }
+
+    return 0;
+}
+
+
+int main(int argc, char *argv[]) {
+
+    if (argv[1] == NULL) {
+        return execute_interactive_mode();
+    } else {
+        return execute_batch_mode(argv[1]);
+    }
 
     //       // build-in_programms
     //       // exit -> exit(0)
