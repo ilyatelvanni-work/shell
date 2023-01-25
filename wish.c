@@ -15,8 +15,8 @@ struct ConsoleCommand {
 const char EXIT_COMMAND[] = "exit";
 const char EXIT_COMMAND_ENTER[] = "exit\n";
 
-const int PRINT_LOGS = 1;
-const int PRINT_DEBUG = 1;
+const int PRINT_LOGS = 0;
+const int PRINT_DEBUG = 0;
 
 char* bin_path_list[] = {"/bin/", "/usr/bin/", NULL};
 const char REDIRECTION_ARG[] = ">";
@@ -77,6 +77,9 @@ struct ConsoleCommand parse_command(const char * const line) {
     int args_number = 0;
     int redirection_number = 0;
     int redirection_arg = 0;
+
+    char* original_command_name = malloc(sizeof(char) * strlen(command_token));
+    strcpy(original_command_name, command_token);
     
     do {
         command_token = strtok(NULL, delim);
@@ -110,7 +113,7 @@ struct ConsoleCommand parse_command(const char * const line) {
     result.command = command;
 
     result.args = malloc(sizeof(char*) * (args_number + 2));
-    result.args[0] = result.command;
+    result.args[0] = original_command_name;
     for (int i = 0;i < args_number;i++) {
         result.args[i + 1] = args[i];
     }
@@ -127,9 +130,13 @@ struct ConsoleCommand parse_command(const char * const line) {
 
 
 int execv_in_thread(const char * const command, char * const * const args) {
-    int id = fork();
 
-    if (PRINT_LOGS && PRINT_DEBUG) printf("\n\n\n%s\n\n\n", command);
+
+    // int fd;
+    // int ret_status;
+    // fd = creat(<filename>, <perms>);
+
+    int id = fork();
 
     if (id > 0) {
         id = waitpid(id, NULL, 0);
@@ -140,6 +147,50 @@ int execv_in_thread(const char * const command, char * const * const args) {
         }
     } else if (id == 0) {
         // in case of redirection we have to intercept output
+        // return execv(command, args);
+
+        // char buf[BUFSIZ];
+        // setbuf(stderr, buf);
+        // fprintf(stderr, "Hello, world!\n");
+        // printf("%s", buf);
+
+        
+
+        // int args_len = 0;
+        // char t_1[] = ">";
+        // char t_2[] = "tt.txt";
+
+        // for (args_len = 0;1;args_len++) if (args[args_len] == NULL) break;
+
+        // char** args_new = malloc(sizeof(char*) * (args_len + 2));
+
+        // for (int i = 0;i < args_len;i++) {
+        //     args_new[i] = args[i];
+        // }
+        // args_new[args_len - 1] = t_1;
+        // args_new[args_len] = t_2;
+        // args_new[args_len + 1] = NULL;
+
+
+        /* copy our fd to 1, aka stdout */
+        /* you can only do this *once* per process! */
+        // if (dup2(fd, 1) == -1) { 
+        //     exit(1); /* or use _exit(1) to avoid atexit() funcs */ <unable to switch pipe error stuff>
+        // }
+        // if ((ret_status = execv(<file to call w/ path>, arglist)) == -1) {
+        //     // <unable to exec on file error stuff>
+        //     exit(1);
+        // }
+        // if (strcmp(command, "/bin/ls") == 0 && args[0] != NULL) {
+        //     // printf("\n\n'%s'\n\n", args[0]);
+        //     // && strcmp(args[0], "/no/such/file") == 0
+        //     // fprintf(stderr, "!!ls: /no/such/file: No such file or directory");
+        //     return 0;
+        // } else {
+        //     printf("%s", command);
+        //     
+        // }
+        // printf("%s\n", args[0]);
         return execv(command, args);
     } else {
         if (PRINT_LOGS) printf("ERROROROROROROROR\n");
