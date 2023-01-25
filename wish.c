@@ -13,7 +13,8 @@ struct ConsoleCommand {
     char** redirections;
 };
 const char EXIT_COMMAND[] = "exit";
-const char EXIT_COMMAND_ENTER[] = "exit\n";
+const char CD_COMMAND[] = "/usr/bin/cd"; // TODO: SUPPORT RELATIVE PATH
+const char EXIT_COMMAND_ENTER[] = "exit\n"; // TODO: REMOVE
 
 const int PRINT_LOGS = 0;
 const int PRINT_DEBUG = 0;
@@ -130,12 +131,6 @@ struct ConsoleCommand parse_command(const char * const line) {
 
 
 int execv_in_thread(const char * const command, char * const * const args) {
-
-
-    // int fd;
-    // int ret_status;
-    // fd = creat(<filename>, <perms>);
-
     int id = fork();
 
     if (id > 0) {
@@ -146,51 +141,6 @@ int execv_in_thread(const char * const command, char * const * const args) {
             return 0;
         }
     } else if (id == 0) {
-        // in case of redirection we have to intercept output
-        // return execv(command, args);
-
-        // char buf[BUFSIZ];
-        // setbuf(stderr, buf);
-        // fprintf(stderr, "Hello, world!\n");
-        // printf("%s", buf);
-
-        
-
-        // int args_len = 0;
-        // char t_1[] = ">";
-        // char t_2[] = "tt.txt";
-
-        // for (args_len = 0;1;args_len++) if (args[args_len] == NULL) break;
-
-        // char** args_new = malloc(sizeof(char*) * (args_len + 2));
-
-        // for (int i = 0;i < args_len;i++) {
-        //     args_new[i] = args[i];
-        // }
-        // args_new[args_len - 1] = t_1;
-        // args_new[args_len] = t_2;
-        // args_new[args_len + 1] = NULL;
-
-
-        /* copy our fd to 1, aka stdout */
-        /* you can only do this *once* per process! */
-        // if (dup2(fd, 1) == -1) { 
-        //     exit(1); /* or use _exit(1) to avoid atexit() funcs */ <unable to switch pipe error stuff>
-        // }
-        // if ((ret_status = execv(<file to call w/ path>, arglist)) == -1) {
-        //     // <unable to exec on file error stuff>
-        //     exit(1);
-        // }
-        // if (strcmp(command, "/bin/ls") == 0 && args[0] != NULL) {
-        //     // printf("\n\n'%s'\n\n", args[0]);
-        //     // && strcmp(args[0], "/no/such/file") == 0
-        //     // fprintf(stderr, "!!ls: /no/such/file: No such file or directory");
-        //     return 0;
-        // } else {
-        //     printf("%s", command);
-        //     
-        // }
-        // printf("%s\n", args[0]);
         return execv(command, args);
     } else {
         if (PRINT_LOGS) printf("ERROROROROROROROR\n");
@@ -222,7 +172,13 @@ int execute_command(const char * const line) {
         }
         if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
-        int result = execv_in_thread(command.command, command.args);
+        int result = 0;
+        if (strcmp(CD_COMMAND, command.command) == 0) {
+            result = command.args[1] == NULL || command.args[2] != NULL ? -1 : chdir(command.args[1]);
+        } else {
+            result = execv_in_thread(command.command, command.args);
+        }
+
         if (PRINT_LOGS) printf("command execution result code: %i\n", result);
 
         return result;
