@@ -15,8 +15,8 @@ struct ConsoleCommand {
 const char EXIT_COMMAND[] = "exit";
 const char EXIT_COMMAND_ENTER[] = "exit\n";
 
-const int PRINT_LOGS = 0;
-const int PRINT_DEBUG = 0;
+const int PRINT_LOGS = 1;
+const int PRINT_DEBUG = 1;
 
 char* bin_path_list[] = {"/bin/", "/usr/bin/", NULL};
 const char REDIRECTION_ARG[] = ">";
@@ -35,11 +35,6 @@ char* make_build_in_command(const char * const command_token) {
 
         if ((file = fopen(command,"r")) != NULL) {
             fclose(file);
-            free(command);
-
-            char *command = malloc(sizeof(char) * strlen(command_token));
-            strcpy(command, command_token);
-            
             return command;
         } else {
             i++;
@@ -133,6 +128,8 @@ struct ConsoleCommand parse_command(const char * const line) {
 
 int execv_in_thread(const char * const command, char * const * const args) {
     int id = fork();
+
+    printf("\n\n\n%s\n\n\n", command);
 
     if (id > 0) {
         id = waitpid(id, NULL, 0);
