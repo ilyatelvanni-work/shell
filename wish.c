@@ -129,7 +129,7 @@ struct ConsoleCommand parse_command(const char * const line) {
 int execv_in_thread(const char * const command, char * const * const args) {
     int id = fork();
 
-    printf("\n\n\n%s\n\n\n", command);
+    if (PRINT_LOGS && PRINT_DEBUG) printf("\n\n\n%s\n\n\n", command);
 
     if (id > 0) {
         id = waitpid(id, NULL, 0);
