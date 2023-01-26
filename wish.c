@@ -13,7 +13,7 @@ struct ConsoleCommand {
     char** redirections;
 };
 const char EXIT_COMMAND[] = "exit";
-const char CD_COMMAND[] = "/usr/bin/cd"; // TODO: SUPPORT RELATIVE PATH
+const char CD_COMMAND[] = "cd";
 const char EXIT_COMMAND_ENTER[] = "exit\n"; // TODO: REMOVE
 
 const int PRINT_LOGS = 0;
@@ -173,7 +173,7 @@ int execute_command(const char * const line) {
         if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
         int result = 0;
-        if (strcmp(CD_COMMAND, command.command) == 0) {
+        if (strcmp(CD_COMMAND, command.args[0]) == 0) {
             result = command.args[1] == NULL || command.args[2] != NULL ? -1 : chdir(command.args[1]);
         } else {
             result = execv_in_thread(command.command, command.args);
