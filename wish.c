@@ -14,13 +14,26 @@ struct ConsoleCommand {
 };
 const char EXIT_COMMAND[] = "exit";
 const char CD_COMMAND[] = "cd";
+const char PATH_COMMAND[] = "path";
 const char EXIT_COMMAND_ENTER[] = "exit\n"; // TODO: REMOVE
 
 const int PRINT_LOGS = 0;
 const int PRINT_DEBUG = 0;
 
-char* bin_path_list[] = {"/bin/", "/usr/bin/", NULL};
+char DEFAULT_PATH_1[] = "/bin/";
+char DEFAULT_PATH_2[] = "/usr/bin/";
+
+char** bin_path_vector;
+
 const char REDIRECTION_ARG[] = ">";
+
+
+void init_default_path() {
+    bin_path_vector = malloc(sizeof(char*) * 3);
+    bin_path_vector[0] = DEFAULT_PATH_1;
+    bin_path_vector[1] = DEFAULT_PATH_2;
+    bin_path_vector[2] = NULL;
+}
 
 
 char* make_build_in_command(const char * const command_token) {
@@ -33,12 +46,17 @@ char* make_build_in_command(const char * const command_token) {
         strcpy(command, CD_COMMAND);
 
         return command;
+    } else if (strcmp(PATH_COMMAND, command_token) == 0) {
+        char *command = malloc(sizeof(char) * strlen(PATH_COMMAND));
+        strcpy(command, PATH_COMMAND);
+
+        return command;
     }
 
-    while(bin_path_list[i] != NULL) {
-        char *command = malloc(sizeof(char) * (strlen(bin_path_list[i]) + strlen(command_token)));
+    while(bin_path_vector[i] != NULL) {
+        char *command = malloc(sizeof(char) * (strlen(bin_path_vector[i]) + strlen(command_token)));
 
-        strcpy(command, bin_path_list[i]);
+        strcpy(command, bin_path_vector[i]);
         strcat(command, command_token);
 
         if ((file = fopen(command,"r")) != NULL) {
@@ -156,6 +174,51 @@ int execv_in_thread(const char * const command, char * const * const args) {
 }
 
 
+int execute_cd_command(const struct ConsoleCommand command) {
+    return command.args[1] == NULL || command.args[2] != NULL ? -1 : chdir(command.args[1]);
+}
+
+
+int execute_path_command(const struct ConsoleCommand command) {
+    if (PRINT_LOGS) printf("executing path command, bin_path_vector now is in '%p'\n", bin_path_vector);
+
+    if (command.args[1] == NULL) {
+        if (PRINT_LOGS) printf("got path with no arguments\n");
+        bin_path_vector = malloc(sizeof(char*));
+        bin_path_vector[0] = NULL;
+    } else {
+        int args_len = 0;
+        int bin_path_len = 0;
+        for (;command.args[args_len + 1] != NULL;args_len++);
+        for (;bin_path_vector[bin_path_len] != NULL;bin_path_len++);
+
+        int bin_path_len_new = bin_path_len + args_len;
+
+        if (PRINT_LOGS) printf("bin_path_vector's length now is %i\n", bin_path_len_new);
+
+        char** bin_path_vector_new = malloc(sizeof(char*) * (bin_path_len_new + 1));
+
+        for (int i = 0;bin_path_vector[i] != NULL;i++) bin_path_vector_new[i] = bin_path_vector[i];
+        for (int i = 1;command.args[i] != NULL;i++) {
+            char* new_path = malloc(sizeof(char) * (strlen(command.args[i]) + 1));
+            strcpy(new_path, command.args[i]);
+            bin_path_vector_new[bin_path_len + i - 1] = new_path;
+        }
+        bin_path_vector_new[bin_path_len_new] = NULL;
+
+        bin_path_vector = bin_path_vector_new;
+    }
+
+    int i = 0;
+    do {
+        if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: bin_path_vector[%i] now is '%s'\n", i, bin_path_vector[i]);
+    } while(bin_path_vector[i++] != NULL);
+    if (PRINT_LOGS && PRINT_DEBUG) printf("\nDEBUG: bin_path_vector is in '%p'\n", bin_path_vector);
+
+    return 0;
+}
+
+
 int execute_command(const char * const line) {
     if (strcmp(EXIT_COMMAND, line) == 0 || strcmp(EXIT_COMMAND_ENTER, line) == 0) {
         if (PRINT_LOGS) printf("got exit command\n");
@@ -181,7 +244,9 @@ int execute_command(const char * const line) {
 
         int result = 0;
         if (strcmp(CD_COMMAND, command.command) == 0) {
-            result = command.args[1] == NULL || command.args[2] != NULL ? -1 : chdir(command.args[1]);
+            result = execute_cd_command(command);
+        } else if (strcmp(PATH_COMMAND, command.command) == 0) {
+            result = execute_path_command(command);
         } else {
             result = execv_in_thread(command.command, command.args);
         }
@@ -191,6 +256,7 @@ int execute_command(const char * const line) {
         return result;
     }
 }
+
 
 int execute_interactive_mode() {
     int execution_code = 0;
@@ -213,6 +279,7 @@ int execute_interactive_mode() {
 
     return 0;
 }
+
 
 int execute_batch_mode(const char * const source_path) {
     int execution_code = 0;
@@ -246,6 +313,8 @@ int execute_batch_mode(const char * const source_path) {
 
 
 int main(int argc, char *argv[]) {
+
+    init_default_path();
 
     if (argv[1] == NULL) {
         return execute_interactive_mode();
