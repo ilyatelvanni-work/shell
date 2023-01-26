@@ -28,6 +28,13 @@ char* make_build_in_command(const char * const command_token) {
     int i = 0;
     FILE *file;
 
+    if (strcmp(CD_COMMAND, command_token) == 0) {
+        char *command = malloc(sizeof(char) * strlen(CD_COMMAND));
+        strcpy(command, CD_COMMAND);
+
+        return command;
+    }
+
     while(bin_path_list[i] != NULL) {
         char *command = malloc(sizeof(char) * (strlen(bin_path_list[i]) + strlen(command_token)));
 
@@ -173,7 +180,7 @@ int execute_command(const char * const line) {
         if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
         int result = 0;
-        if (strcmp(CD_COMMAND, command.args[0]) == 0) {
+        if (strcmp(CD_COMMAND, command.command) == 0) {
             result = command.args[1] == NULL || command.args[2] != NULL ? -1 : chdir(command.args[1]);
         } else {
             result = execv_in_thread(command.command, command.args);
