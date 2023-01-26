@@ -17,11 +17,11 @@ const char CD_COMMAND[] = "cd";
 const char PATH_COMMAND[] = "path";
 const char EXIT_COMMAND_ENTER[] = "exit\n"; // TODO: REMOVE
 
-const int PRINT_LOGS = 0;
-const int PRINT_DEBUG = 0;
+const int PRINT_LOGS = 1;
+const int PRINT_DEBUG = 1;
 
-char DEFAULT_PATH_1[] = "/bin/";
-char DEFAULT_PATH_2[] = "/usr/bin/";
+char DEFAULT_PATH_1[] = "/bin";
+char DEFAULT_PATH_2[] = "/usr/bin";
 
 char** bin_path_vector;
 
@@ -54,9 +54,10 @@ char* make_build_in_command(const char * const command_token) {
     }
 
     while(bin_path_vector[i] != NULL) {
-        char *command = malloc(sizeof(char) * (strlen(bin_path_vector[i]) + strlen(command_token)));
+        char *command = malloc(sizeof(char) * (strlen(bin_path_vector[i]) + 1 + strlen(command_token)));
 
         strcpy(command, bin_path_vector[i]);
+        strcat(command, "/");
         strcat(command, command_token);
 
         if ((file = fopen(command,"r")) != NULL) {
