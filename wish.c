@@ -17,8 +17,8 @@ const char CD_COMMAND[] = "cd";
 const char PATH_COMMAND[] = "path";
 const char EXIT_COMMAND_ENTER[] = "exit\n"; // TODO: REMOVE
 
-const int PRINT_LOGS = 1;
-const int PRINT_DEBUG = 1;
+const int PRINT_LOGS = 0;
+const int PRINT_DEBUG = 0;
 
 char DEFAULT_PATH_1[] = "/bin";
 char DEFAULT_PATH_2[] = "/usr/bin";
@@ -118,8 +118,7 @@ struct ConsoleCommand parse_command(const char * const line) {
 
                 if (redirection_arg) {
                     redirections[redirection_number++] = arg;
-                    redirection_arg = 0;
-                    if (PRINT_LOGS) printf("got %i redirection token in '%p': %s\n", args_number, arg, arg);
+                    if (PRINT_LOGS) printf("got %i redirection token in '%p': %s\n", redirection_number, arg, arg);
                 } else {
                     args[args_number++] = arg;
                     if (PRINT_LOGS) printf("got %i command token in '%p': %s\n", args_number, arg, arg);
@@ -132,10 +131,10 @@ struct ConsoleCommand parse_command(const char * const line) {
 
     free(line_editable);
 
-    if (redirection_arg == 1) {
-        result.command = NULL;
-        return result;
-    }
+    // if (redirection_arg == 1) {
+    //     result.command = NULL;
+    //     return result;
+    // }
 
     result.command = command;
 
