@@ -193,7 +193,7 @@ int execv_in_thread(const char * const command, char * const * const args, char 
         close(pipefd[0]);    // close reading end in the child
 
         dup2(pipefd[1], 1);  // send stdout to the pipe
-        dup2(pipefd[1], 2);  // send stderr to the pipe
+        // dup2(pipefd[1], 2);  // send stderr to the pipe
 
         close(pipefd[1]);    // this descriptor is no longer needed
 
