@@ -155,7 +155,9 @@ struct ConsoleCommand parse_command(const char * const line) {
 }
 
 
-int execv_in_thread(const char * const command, char * const * const args) {
+int execv_in_thread(const char * const command, char * const * const args, char * const * const redirections) {
+    int pipefd[2];
+    pipe(pipefd);
     int id = fork();
 
     if (id > 0) {
@@ -163,10 +165,40 @@ int execv_in_thread(const char * const command, char * const * const args) {
         if (id == -1) {
             return -1;
         } else {
+            char buffer[1024];
+            close(pipefd[1]);
+
+            int redirections_number = 0;
+            for (;redirections[redirections_number] != NULL;redirections_number++);
+
+            FILE **redirection_files = malloc(sizeof(FILE*) * redirections_number);
+            for (int i = 0;i < redirections_number;i++) {
+                redirection_files[i] = fopen(redirections[i], "w");
+            }
+
+            while (read(pipefd[0], buffer, sizeof(buffer)) != 0) {
+                if (redirections_number == 0) {
+                    printf("%s", buffer);
+                } else {
+                    for (int i = 0;i < redirections_number;i++) {
+                        fprintf(redirection_files[i], "%s", buffer);
+                    }
+                }
+            }
+
             return 0;
         }
     } else if (id == 0) {
-        return execv(command, args);
+
+        close(pipefd[0]);    // close reading end in the child
+
+        dup2(pipefd[1], 1);  // send stdout to the pipe
+        dup2(pipefd[1], 2);  // send stderr to the pipe
+
+        close(pipefd[1]);    // this descriptor is no longer needed
+
+        int result = execv(command, args);
+        return result;
     } else {
         if (PRINT_LOGS) printf("ERROROROROROROROR\n");
         return -1;
@@ -248,7 +280,7 @@ int execute_command(const char * const line) {
         } else if (strcmp(PATH_COMMAND, command.command) == 0) {
             result = execute_path_command(command);
         } else {
-            result = execv_in_thread(command.command, command.args);
+            result = execv_in_thread(command.command, command.args, command.redirections);
         }
 
         if (PRINT_LOGS) printf("command execution result code: %i\n", result);
