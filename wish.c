@@ -131,7 +131,7 @@ struct ConsoleCommand parse_command(const char * const line) {
 
     free(line_editable);
 
-    if (redirection_arg == 1 and redirection_number == 0) {
+    if (redirection_arg == 1 && redirection_number == 0) {
         result.command = NULL;
         return result;
     }
