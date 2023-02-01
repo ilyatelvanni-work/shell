@@ -131,10 +131,10 @@ struct ConsoleCommand parse_command(const char * const line) {
 
     free(line_editable);
 
-    // if (redirection_arg == 1) {
-    //     result.command = NULL;
-    //     return result;
-    // }
+    if (redirection_arg == 1 and redirection_number == 0) {
+        result.command = NULL;
+        return result;
+    }
 
     result.command = command;
 
