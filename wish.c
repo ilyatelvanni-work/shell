@@ -98,6 +98,13 @@ char** split_line(const char * const line) {
                 words_initial_index = i;
             }
         }
+
+        if (line[i] == '>') {
+            words_first_symbol_list[words_number] = words_initial_index;
+            words_last_symbol_list[words_number] = words_initial_index;
+            words_number++;
+            word_length = 0;
+        }
     }
 
     char** splited_line = malloc(sizeof(char*) * (words_number + 1));
