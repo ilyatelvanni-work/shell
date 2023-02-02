@@ -380,7 +380,11 @@ int main(int argc, char *argv[]) {
     if (argv[1] == NULL) {
         return execute_interactive_mode();
     } else {
-        return execute_batch_mode(argv[1]);
+        if (argv[2] == NULL) {
+            return execute_batch_mode(argv[1]);
+        } else {
+            printError();
+        }
     }
 
     //       // build-in_programms
