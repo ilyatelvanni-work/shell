@@ -201,7 +201,10 @@ int execv_in_thread(const char * const command, char * const * const args, char 
             char buffer[1024];
             close(pipefd[1]);
 
-            FILE* redirection_file = fopen(redirection, "w");
+            FILE* redirection_file = NULL;
+            if (redirection != NULL) {
+                redirection_file = fopen(redirection, "w");
+            }
 
             while (read(pipefd[0], buffer, sizeof(buffer)) != 0) {
                 if (redirection == NULL) {
@@ -211,7 +214,9 @@ int execv_in_thread(const char * const command, char * const * const args, char 
                 }
             }
 
-            fclose(redirection_file);
+            if (redirection != NULL) {
+                fclose(redirection_file);
+            }
 
             return 0;
         }
