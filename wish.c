@@ -107,15 +107,26 @@ char** split_line(const char * const line) {
         }
     }
 
-    char** splited_line = malloc(sizeof(char*) * (words_number + 1));
+    char** splited_line;
 
-    for (int i = 0;i < words_number;i++) {
-        int word_length = words_last_symbol_list[i] - words_first_symbol_list[i] + 1;
-        splited_line[i] = malloc(sizeof(char*) * word_length);
+    if (words_number > 0) {
+        splited_line = malloc(sizeof(char*) * (words_number + 1));
 
-        strncpy(splited_line[i], line + words_first_symbol_list[i], word_length);
+        for (int i = 0;i < words_number;i++) {
+            int word_length = words_last_symbol_list[i] - words_first_symbol_list[i] + 1;
+            splited_line[i] = malloc(sizeof(char*) * word_length);
+            strncpy(splited_line[i], line + words_first_symbol_list[i], word_length);
+        }
+
+        splited_line[words_number] = NULL;
+    } else {
+        splited_line = malloc(sizeof(char*) * 2);
+
+        splited_line[0] = malloc(sizeof(char) * 1);
+        strcpy(splited_line[0], " ");
+
+        splited_line[1] = NULL;
     }
-    splited_line[words_number] = NULL;
 
     return splited_line;
 }
@@ -131,9 +142,14 @@ struct ConsoleCommand parse_command(const char * const line) {
         if (PRINT_LOGS && PRINT_DEBUG) printf("line token %i: '%s'\n", i, tokens[i]);
     }
     if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
-
+    
     struct ConsoleCommand result;
     result.redirection = NULL;
+
+    if (strcmp(tokens[0], " ") == 0) {
+        result.command = tokens[0];
+        return result;
+    }
 
     result.command = make_build_in_command(tokens[0]);
     if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", result.command, result.command);
@@ -290,6 +306,10 @@ int execute_command(const char * const line) {
         return 1;
     } else {
         struct ConsoleCommand command = parse_command(line);
+
+        if (strcmp(command.command, " ") == 0) {
+            return 0;
+        }
 
         if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
         if (command.command == NULL) {
