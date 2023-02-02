@@ -384,6 +384,7 @@ int main(int argc, char *argv[]) {
             return execute_batch_mode(argv[1]);
         } else {
             printError();
+            return 1;
         }
     }
 
