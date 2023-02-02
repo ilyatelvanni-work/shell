@@ -211,6 +211,8 @@ int execv_in_thread(const char * const command, char * const * const args, char 
                 }
             }
 
+            fclose(redirection_file);
+
             return 0;
         }
     } else if (id == 0) {
