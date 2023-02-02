@@ -349,6 +349,7 @@ int execute_batch_mode(const char * const source_path) {
 
     if (source == NULL) {
         printError();
+        return -1;
     } else {
         char *line = NULL;
         size_t len = 0;
