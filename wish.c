@@ -307,13 +307,14 @@ int execute_command(const char * const line) {
     } else {
         struct ConsoleCommand command = parse_command(line);
 
-        if (strcmp(command.command, " ") == 0) {
-            return 0;
-        }
-
         if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
+
         if (command.command == NULL) {
             return -1;
+        }
+
+        if (strcmp(command.command, " ") == 0) {
+            return 0;
         }
 
         for (int i = 0;1;i++) {
