@@ -11,6 +11,7 @@ struct ConsoleCommand {
     char* command;
     char** args;
     char* redirection;
+    struct ConsoleCommand* parallel;
 };
 const char EXIT_COMMAND[] = "exit";
 const char CD_COMMAND[] = "cd";
@@ -26,6 +27,7 @@ char DEFAULT_PATH_2[] = "/usr/bin";
 char** bin_path_vector;
 
 const char REDIRECTION_ARG[] = ">";
+const char PARALLEL_EXEC_ARG[] = "&";
 
 
 void init_default_path() {
@@ -145,8 +147,9 @@ struct ConsoleCommand parse_command(const char * const line) {
     
     struct ConsoleCommand result;
     result.redirection = NULL;
+    result.parallel = NULL;
 
-    if (strcmp(tokens[0], " ") == 0) {
+    if (strcmp(tokens[0], " ") == 0 || strcmp(tokens[0], PARALLEL_EXEC_ARG) == 0) {
         result.command = tokens[0];
         return result;
     }
@@ -313,7 +316,7 @@ int execute_command(const char * const line) {
             return -1;
         }
 
-        if (strcmp(command.command, " ") == 0) {
+        if (strcmp(command.command, " ") == 0 || strcmp(command.command, PARALLEL_EXEC_ARG) == 0) {
             return 0;
         }
 
