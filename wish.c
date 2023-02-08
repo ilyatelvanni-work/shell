@@ -332,7 +332,7 @@ int execute_path_command(const struct ConsoleCommand command) {
 
 
 int execute_command(const struct ConsoleCommand command) {
-    if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
+    if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, &command);
 
     if (strcmp(command.command, " ") == 0) {
         if (PRINT_LOGS) printf("skip empty command execution\n\n");
@@ -344,7 +344,6 @@ int execute_command(const struct ConsoleCommand command) {
         if (command.args[i] == NULL) break;
     }
     if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection in '%p': %s\n", command.redirection, command.redirection);
-    if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
 
     int result = 0;
     if (strcmp(CD_COMMAND, command.command) == 0) {
@@ -355,7 +354,9 @@ int execute_command(const struct ConsoleCommand command) {
         result = execv_in_thread(command.command, command.args, command.redirection);
     }
 
-    return 0;
+    if (PRINT_LOGS) printf("command '%s' in '%p' executed, result: %i\n\n", command.command, &command, result);
+
+    return result;
 }
 
 
@@ -378,7 +379,7 @@ int execute_command_line(const char * const line) {
         const struct ConsoleCommand * command_ptr = &command;
         while (command_ptr != NULL) {
             if (PRINT_LOGS) printf("command in '%p' refers command in '%p'\n", command_ptr, (*command_ptr).parallel);
-            result = execute_command(*command_ptr) || result;
+            result = execute_command(*command_ptr);
             command_ptr = (*command_ptr).parallel;
         }
 
