@@ -76,17 +76,17 @@ char* make_build_in_command(const char * const command_token) {
 }
 
 
-char** split_line(const char * const line) {
+char** split_line(const char * const line, int * string_dilimiter) {
     int words_first_symbol_list[1000];
     int words_last_symbol_list[1000];
     int words_number = 0;
     int word_length = 0;
     int words_initial_index = 0;
 
-    for (int i = 0;i < strlen(line) + 1;i++) {
+    for (int i = *string_dilimiter;i < strlen(line) + 1;i++) {
         int is_dilimiter = line[i] == ' ' || line[i] == '\0' || line[i] == '\n' || line[i] == '\t';
 
-        if (is_dilimiter || line[i] == '>') {
+        if (is_dilimiter || line[i] == '>' || line[i] == '&') {
             if (word_length > 0) {
                 words_first_symbol_list[words_number] = words_initial_index;
                 words_last_symbol_list[words_number] = i - 1;
@@ -106,6 +106,12 @@ char** split_line(const char * const line) {
             words_last_symbol_list[words_number] = words_initial_index;
             words_number++;
             word_length = 0;
+        }
+
+        *string_dilimiter = i + 1;
+
+        if (line[i] == '&') {
+            break;
         }
     }
 
@@ -132,78 +138,101 @@ char** split_line(const char * const line) {
 
     return splited_line;
 }
-
+    
 
 struct ConsoleCommand parse_command(const char * const line) {
 
+    int string_dilimiter = 0;
+
     if (PRINT_LOGS) printf("parse_command got: '%s'\n", line);
 
-    char **tokens = split_line(line);
+    struct ConsoleCommand * parallel_command = NULL;
 
-    for (int i = 0;tokens[i] != NULL;i++) {
-        if (PRINT_LOGS && PRINT_DEBUG) printf("line token %i: '%s'\n", i, tokens[i]);
-    }
-    if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
-    
-    struct ConsoleCommand result;
-    result.redirection = NULL;
-    result.parallel = NULL;
+    while (string_dilimiter < strlen(line) + 1) {
 
-    if (strcmp(tokens[0], " ") == 0 || strcmp(tokens[0], PARALLEL_EXEC_ARG) == 0) {
-        result.command = tokens[0];
-        return result;
-    }
+        char **tokens = split_line(line, &string_dilimiter);
+        
+        for (int i = 0;tokens[i] != NULL;i++) {
+            if (PRINT_LOGS && PRINT_DEBUG) printf("line token %i: '%s'\n", i, tokens[i]);
+        }
 
-    result.command = make_build_in_command(tokens[0]);
-    if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", result.command, result.command);
+        struct ConsoleCommand * result = malloc(sizeof(struct ConsoleCommand));
+        (*result).redirection = NULL;
+        (*result).parallel = parallel_command;
+        if (PRINT_LOGS && PRINT_DEBUG) printf("generated command in '%p' refers to parallel command in '%p'\n", result, parallel_command);
 
-    if (result.command == NULL) {
-        return result;
-    }
+        if (strcmp(tokens[0], " ") == 0) {
+            (*result).command = tokens[0];
+            if (PRINT_LOGS) printf("\n");
 
-    char *args[1000] = {};
-    int args_number = 0;
-    int is_redirection_mode_on = 0;
-    int is_error_mode_on = 0;
+            parallel_command = result;
+            continue;
+        }
+        (*result).command = make_build_in_command(tokens[0]);
+        if (PRINT_LOGS) printf("command '%s' in '%p' is generated\n", (*result).command, (*result).command);
 
-    for (int i = 0;tokens[i] != NULL && !is_error_mode_on;i++){
-        if (strcmp(REDIRECTION_ARG, tokens[i])) {
-            if (is_redirection_mode_on) {
-                if (result.redirection != NULL) {
+        if ((*result).command == NULL) {
+            return (*result);
+        }
+
+        char *args[1000] = {};
+        int args_number = 0;
+        int is_redirection_mode_on = 0;
+        int is_error_mode_on = 0;
+
+        for (int i = 0;tokens[i] != NULL && !is_error_mode_on;i++) {
+            if (strcmp(REDIRECTION_ARG, tokens[i])) {
+                if (is_redirection_mode_on) {
+                    if ((*result).redirection != NULL) {
+                        is_error_mode_on = 1;
+                        break;
+                    }
+
+                    (*result).redirection = tokens[i];
+                    if (PRINT_LOGS) printf("got redirection token in '%p': %s\n", (*result).redirection, (*result).redirection);
+                } else {
+                    args[args_number++] = tokens[i];
+
+                    if (PRINT_LOGS) printf("got %i command token in '%p': %s\n", args_number, tokens[i], tokens[i]);
+                }
+            } else {
+                if (is_redirection_mode_on) {
                     is_error_mode_on = 1;
                     break;
+                } else {
+                    is_redirection_mode_on = 1;
                 }
-
-                result.redirection = tokens[i];
-                if (PRINT_LOGS) printf("got redirection token in '%p': %s\n", result.redirection, result.redirection);
-            } else {
-                args[args_number++] = tokens[i];
-
-                if (PRINT_LOGS) printf("got %i command token in '%p': %s\n", args_number, tokens[i], tokens[i]);
-            }
-        } else {
-            if (is_redirection_mode_on) {
-                is_error_mode_on = 1;
-                break;
-            } else {
-                is_redirection_mode_on = 1;
             }
         }
+
+        if (is_error_mode_on == 1 || (is_redirection_mode_on == 1 && (*result).redirection == NULL)) {
+            if (PRINT_LOGS) printf("error mode during command parsing is activated, returning error");
+            free((*result).command);
+            (*result).command = NULL;
+            return (*result);
+        }
+
+        (*result).args = malloc(sizeof(char*) * (args_number + 1));
+        for (int i = 0;i < args_number;i++) {
+            (*result).args[i] = args[i];
+        }
+        (*result).args[args_number] = NULL;
+
+        parallel_command = result;
+
+        // TODO: HANDLE PARALLEL
     }
 
-    if (is_error_mode_on == 1 || (is_redirection_mode_on == 1 && result.redirection == NULL)) {
-        free(result.command);
-        result.command = NULL;
-        return result;
-    }
+    if (parallel_command != NULL) {
+        return *parallel_command;
+    } else {
+        struct ConsoleCommand * result = malloc(sizeof(struct ConsoleCommand));
+        (*result).redirection = NULL;
+        (*result).parallel = NULL;
+        (*result).command = NULL;
 
-    result.args = malloc(sizeof(char*) * (args_number + 1));
-    for (int i = 0;i < args_number;i++) {
-        result.args[i] = args[i];
+        return *result;
     }
-    result.args[args_number] = NULL;
-
-    return result;
 }
 
 
@@ -302,7 +331,35 @@ int execute_path_command(const struct ConsoleCommand command) {
 }
 
 
-int execute_command(const char * const line) {
+int execute_command(const struct ConsoleCommand command) {
+    if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
+
+    if (strcmp(command.command, " ") == 0) {
+        if (PRINT_LOGS) printf("skip empty command execution\n\n");
+        return 0;
+    }
+
+    for (int i = 0;1;i++) {
+        if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
+        if (command.args[i] == NULL) break;
+    }
+    if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection in '%p': %s\n", command.redirection, command.redirection);
+    if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
+
+    int result = 0;
+    if (strcmp(CD_COMMAND, command.command) == 0) {
+        result = execute_cd_command(command);
+    } else if (strcmp(PATH_COMMAND, command.command) == 0) {
+        result = execute_path_command(command);
+    } else {
+        result = execv_in_thread(command.command, command.args, command.redirection);
+    }
+
+    return 0;
+}
+
+
+int execute_command_line(const char * const line) {
     if (strcmp(EXIT_COMMAND, line) == 0 || strcmp(EXIT_COMMAND_ENTER, line) == 0) {
         if (PRINT_LOGS) printf("got exit command\n");
         
@@ -310,30 +367,19 @@ int execute_command(const char * const line) {
     } else {
         struct ConsoleCommand command = parse_command(line);
 
-        if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, command.command);
-
         if (command.command == NULL) {
             return -1;
         }
 
-        if (strcmp(command.command, " ") == 0 || strcmp(command.command, PARALLEL_EXEC_ARG) == 0) {
-            return 0;
-        }
-
-        for (int i = 0;1;i++) {
-            if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
-            if (command.args[i] == NULL) break;
-        }
-        if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection in '%p': '%s'\n", command.redirection, command.redirection);
-        if (PRINT_LOGS && PRINT_DEBUG) printf("\n");
+        if (PRINT_LOGS) printf("Root command in '%p' refers command in '%p'\n", &command, command.parallel);
 
         int result = 0;
-        if (strcmp(CD_COMMAND, command.command) == 0) {
-            result = execute_cd_command(command);
-        } else if (strcmp(PATH_COMMAND, command.command) == 0) {
-            result = execute_path_command(command);
-        } else {
-            result = execv_in_thread(command.command, command.args, command.redirection);
+
+        const struct ConsoleCommand * command_ptr = &command;
+        while (command_ptr != NULL) {
+            if (PRINT_LOGS) printf("command in '%p' refers command in '%p'\n", command_ptr, (*command_ptr).parallel);
+            result = execute_command(*command_ptr) || result;
+            command_ptr = (*command_ptr).parallel;
         }
 
         if (PRINT_LOGS) printf("command execution result code: %i\n", result);
@@ -354,7 +400,7 @@ int execute_interactive_mode() {
         getline(&line, &len, stdin);
         if (PRINT_LOGS) printf("get command '%s'\n", line);
 
-        execution_code = execute_command(line);
+        execution_code = execute_command_line(line);
         if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
 
         if (execution_code < 0) {
@@ -382,7 +428,7 @@ int execute_batch_mode(const char * const source_path) {
         while ((execution_code <= 0) && ((read = getline(&line, &len, source)) != -1)) {
             if (PRINT_LOGS) printf("get command '%s'\n", line);
             
-            execution_code = execute_command(line);
+            execution_code = execute_command_line(line);
             
             if (PRINT_LOGS) printf("command executed, code %i\n", execution_code);
 
