@@ -420,6 +420,9 @@ int execute_command_line(const char * const line) {
             } else {
                 if (!*command_ptr->result->is_done) {
                     char buffer[1024];
+                    for (int i = 0;i < 1024;i++) {
+                        buffer[i] = '\0';
+                    }
 
                     FILE* redirection_file = NULL;
                     if (command_ptr->redirection != NULL) {
