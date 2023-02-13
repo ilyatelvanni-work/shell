@@ -367,7 +367,6 @@ void execute_command(struct ConsoleCommand * command) {
     }
     if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection in '%p': %s\n", command->redirection, command->redirection);
 
-    int result = 0;
     if (strcmp(CD_COMMAND, command->command) == 0) {
         *(execution_result->result) = execute_cd_command(*command);
         *(execution_result->is_done) = 1;
@@ -416,13 +415,7 @@ int execute_command_line(const char * const line) {
                 waitpid(command_ptr->result->pid, NULL, 0)
             );
 
-            // if (PRINT_LOGS) printf("command in '%p' refers command in '%p'\n", command_ptr, (*command_ptr).parallel);
-            // execute_command(command_ptr);
-
             if (result == -1) {
-
-                // printf("\nERROR ERROR IN PID: %i\n", command_ptr->result->pid);
-
                 return -1;
             } else {
                 if (!*command_ptr->result->is_done) {
