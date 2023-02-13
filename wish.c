@@ -6,13 +6,21 @@
 #include <sys/types.h>
 #include <sys/wait.h> // waitpid
 
+struct ExecutionResult {
+    int *result;
+    int pid;
+    int *is_done;
+    int pipe;
+};
 
 struct ConsoleCommand {
     char* command;
     char** args;
     char* redirection;
-    struct ConsoleCommand* parallel;
+    struct ConsoleCommand * parallel;
+    struct ExecutionResult * result;
 };
+
 const char EXIT_COMMAND[] = "exit";
 const char CD_COMMAND[] = "cd";
 const char PATH_COMMAND[] = "path";
@@ -236,53 +244,57 @@ struct ConsoleCommand parse_command(const char * const line) {
 }
 
 
-int execv_in_thread(const char * const command, char * const * const args, char * const redirection) {
+int execv_in_thread(struct ConsoleCommand * command) {
     int pipefd[2];
     pipe(pipefd);
     int id = fork();
 
     if (id > 0) {
-        id = waitpid(id, NULL, 0);
-        if (id == -1) {
-            return -1;
-        } else {
-            char buffer[1024];
-            close(pipefd[1]);
+        command->result->pid = id;
+        command->result->pipe = pipefd[0];
+        close(pipefd[1]);
 
-            FILE* redirection_file = NULL;
-            if (redirection != NULL) {
-                redirection_file = fopen(redirection, "w");
-            }
+        // id = waitpid(id, NULL, 0);
+        // if (id == -1) {
+        //     return -1;
+        // } else {
+        // char buffer[1024];
+        //
 
-            while (read(pipefd[0], buffer, sizeof(buffer)) != 0) {
-                if (redirection == NULL) {
-                    printf("%s", buffer);
-                } else {
-                    fprintf(redirection_file, "%s", buffer);
-                }
-            }
+        // FILE* redirection_file = NULL;
+        // if (redirection != NULL) {
+        // redirection_file = fopen(redirection, "w");
+        // }
 
-            if (redirection != NULL) {
-                fclose(redirection_file);
-            }
+        // while (read(pipefd[0], buffer, sizeof(buffer)) != 0) {
+        // if (redirection == NULL) {
+        //    printf("%s", buffer);
+        // } else {
+        //    fprintf(redirection_file, "%s", buffer);
+        // }
+        // }
 
-            return 0;
-        }
+        // if (redirection != NULL) {
+        //    fclose(redirection_file);
+        // }
+
+        // return 0;
+        // }
     } else if (id == 0) {
-
         close(pipefd[0]);    // close reading end in the child
 
         dup2(pipefd[1], 1);  // send stdout to the pipe
         // dup2(pipefd[1], 2);  // send stderr to the pipe
-
         close(pipefd[1]);    // this descriptor is no longer needed
 
-        int result = execv(command, args);
+        int result = execv(command->command, command->args);
         return result;
     } else {
         if (PRINT_LOGS) printf("ERROROROROROROROR\n");
         return -1;
     }
+
+    return 0;
 }
 
 
@@ -331,32 +343,48 @@ int execute_path_command(const struct ConsoleCommand command) {
 }
 
 
-int execute_command(const struct ConsoleCommand command) {
-    if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command.command, &command);
+void execute_command(struct ConsoleCommand * command) {
+    if (PRINT_LOGS) printf("command for execution: '%s' in '%p' \n", command->command, command);
 
-    if (strcmp(command.command, " ") == 0) {
+    struct ExecutionResult * execution_result = malloc(sizeof(struct ExecutionResult));
+    execution_result->pid = 0;
+    execution_result->result = malloc(sizeof(int));
+    *(execution_result->result) = 0;
+    execution_result->is_done = malloc(sizeof(int));
+    *(execution_result->is_done) = 0;
+
+    if (strcmp(command->command, " ") == 0) {
         if (PRINT_LOGS) printf("skip empty command execution\n\n");
-        return 0;
+
+        *(execution_result->is_done) = 1;
+        command->result = execution_result;
+        return;
     }
 
     for (int i = 0;1;i++) {
-        if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command.args[i], command.args[i]);
-        if (command.args[i] == NULL) break;
+        if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: arg '%i' in '%p': '%s'\n", i, command->args[i], command->args[i]);
+        if (command->args[i] == NULL) break;
     }
-    if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection in '%p': %s\n", command.redirection, command.redirection);
+    if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: redirection in '%p': %s\n", command->redirection, command->redirection);
 
     int result = 0;
-    if (strcmp(CD_COMMAND, command.command) == 0) {
-        result = execute_cd_command(command);
-    } else if (strcmp(PATH_COMMAND, command.command) == 0) {
-        result = execute_path_command(command);
+    if (strcmp(CD_COMMAND, command->command) == 0) {
+        *(execution_result->result) = execute_cd_command(*command);
+        *(execution_result->is_done) = 1;
+        command->result = execution_result;
+    } else if (strcmp(PATH_COMMAND, command->command) == 0) {
+        *(execution_result->result) = execute_path_command(*command);
+        *(execution_result->is_done) = 1;
+        command->result = execution_result;
     } else {
-        result = execv_in_thread(command.command, command.args, command.redirection);
+        command->result = execution_result;
+        int result_of_forking = execv_in_thread(command);
+
+        if (result_of_forking != 0) {
+            *(command->result->result) = result_of_forking;
+            *(command->result->is_done) = 1;
+        }
     }
-
-    if (PRINT_LOGS) printf("command '%s' in '%p' executed, result: %i\n\n", command.command, &command, result);
-
-    return result;
 }
 
 
@@ -374,18 +402,53 @@ int execute_command_line(const char * const line) {
 
         if (PRINT_LOGS) printf("Root command in '%p' refers command in '%p'\n", &command, command.parallel);
 
-        int result = 0;
-
-        const struct ConsoleCommand * command_ptr = &command;
+        struct ConsoleCommand * command_ptr = &command;
         while (command_ptr != NULL) {
             if (PRINT_LOGS) printf("command in '%p' refers command in '%p'\n", command_ptr, (*command_ptr).parallel);
-            result = execute_command(*command_ptr);
+            execute_command(command_ptr);
             command_ptr = (*command_ptr).parallel;
         }
+        
+        for (command_ptr = &command;command_ptr != NULL;command_ptr = (*command_ptr).parallel) {
+            int result = (
+                (*command_ptr->result->is_done) == 1 ?
+                (*command_ptr->result->result) :
+                waitpid(command_ptr->result->pid, NULL, 0)
+            );
 
-        if (PRINT_LOGS) printf("command execution result code: %i\n", result);
+            // if (PRINT_LOGS) printf("command in '%p' refers command in '%p'\n", command_ptr, (*command_ptr).parallel);
+            // execute_command(command_ptr);
 
-        return result;
+            if (result == -1) {
+
+                // printf("\nERROR ERROR IN PID: %i\n", command_ptr->result->pid);
+
+                return -1;
+            } else {
+                if (!*command_ptr->result->is_done) {
+                    char buffer[1024];
+
+                    FILE* redirection_file = NULL;
+                    if (command_ptr->redirection != NULL) {
+                        redirection_file = fopen(command_ptr->redirection, "w");
+                    }
+
+                    while (read(command_ptr->result->pipe, buffer, sizeof(buffer)) != 0) {
+                        if (command_ptr->redirection == NULL) {
+                           printf("%s", buffer);
+                        } else {
+                           fprintf(redirection_file, "%s", buffer);
+                        }
+                    }
+
+                    if (command_ptr->redirection != NULL) {
+                       fclose(redirection_file);
+                    }
+                }
+            }
+        }
+
+        return 0;
     }
 }
 
