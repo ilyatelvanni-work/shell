@@ -173,7 +173,17 @@ struct ConsoleCommand parse_command(const char * const line) {
             (*result).command = tokens[0];
             if (PRINT_LOGS) printf("\n");
 
-            parallel_command = result;
+            if (parallel_command == NULL) {
+                parallel_command = result;
+            } else {
+                struct ConsoleCommand * next_parallel = parallel_command;
+
+                while (next_parallel->parallel != NULL) {
+                    next_parallel = parallel_command->parallel;
+                }
+
+                next_parallel->parallel = result;
+            }
             continue;
         }
         (*result).command = make_build_in_command(tokens[0]);
