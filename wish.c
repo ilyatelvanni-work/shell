@@ -19,6 +19,7 @@ struct ConsoleCommand {
     char* redirection;
     struct ConsoleCommand * parallel;
     struct ExecutionResult * result;
+    int handled;
 };
 
 const char EXIT_COMMAND[] = "exit";
@@ -427,39 +428,53 @@ int execute_command_line(const char * const line) {
             execute_command(command_ptr);
             command_ptr = (*command_ptr).parallel;
         }
-        
+
+        int handled_desirable = 0;
+        int handled_actual = 0;
+
         for (command_ptr = &command;command_ptr != NULL;command_ptr = (*command_ptr).parallel) {
-            int result = (
-                (*command_ptr->result->is_done) == 1 ?
-                (*command_ptr->result->result) :
-                waitpid(command_ptr->result->pid, NULL, 0)
-            );
+            command_ptr->handled = 0;
+            handled_desirable++;
+        }
 
-            if (result == -1) {
-                return -1;
-            } else {
-                if (!*command_ptr->result->is_done) {
-                    char buffer[1024];
-                    for (int i = 0;i < 1024;i++) {
-                        buffer[i] = '\0';
-                    }
+        while (handled_actual < handled_desirable) {
+            for (command_ptr = &command;command_ptr != NULL;command_ptr = (*command_ptr).parallel) {
+                int result = (
+                    (*command_ptr->result->is_done) == 1 ?
+                    (*command_ptr->result->result) :
+                    waitpid(command_ptr->result->pid, NULL, WNOHANG)
+                );
 
-                    FILE* redirection_file = NULL;
-                    if (command_ptr->redirection != NULL) {
-                        redirection_file = fopen(command_ptr->redirection, "w");
-                    }
+                if (result == -1 && command_ptr->handled == 0) {
+                    return -1;
+                } else if (result == 0 || command_ptr->handled == 1) {
+                    continue;
+                } else {
+                    if (!*command_ptr->result->is_done) {
+                        char buffer[1024];
+                        for (int i = 0;i < 1024;i++) {
+                            buffer[i] = '\0';
+                        }
 
-                    while (read(command_ptr->result->pipe, buffer, sizeof(buffer)) != 0) {
-                        if (command_ptr->redirection == NULL) {
-                           printf("%s", buffer);
-                        } else {
-                           fprintf(redirection_file, "%s", buffer);
+                        FILE* redirection_file = NULL;
+                        if (command_ptr->redirection != NULL) {
+                            redirection_file = fopen(command_ptr->redirection, "w");
+                        }
+
+                        while (read(command_ptr->result->pipe, buffer, sizeof(buffer)) != 0) {
+                            if (command_ptr->redirection == NULL) {
+                               printf("%s", buffer);
+                            } else {
+                               fprintf(redirection_file, "%s", buffer);
+                            }
+                        }
+
+                        if (command_ptr->redirection != NULL) {
+                           fclose(redirection_file);
                         }
                     }
-
-                    if (command_ptr->redirection != NULL) {
-                       fclose(redirection_file);
-                    }
+                    command_ptr->handled = 1;
+                    handled_actual++;
                 }
             }
         }
