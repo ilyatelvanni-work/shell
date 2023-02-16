@@ -166,7 +166,7 @@ struct ConsoleCommand parse_command(const char * const line) {
 
         struct ConsoleCommand * result = malloc(sizeof(struct ConsoleCommand));
         (*result).redirection = NULL;
-        (*result).parallel = parallel_command;
+        (*result).parallel = NULL;
         if (PRINT_LOGS && PRINT_DEBUG) printf("generated command in '%p' refers to parallel command in '%p'\n", result, parallel_command);
 
         if (strcmp(tokens[0], " ") == 0) {
@@ -226,7 +226,17 @@ struct ConsoleCommand parse_command(const char * const line) {
         }
         (*result).args[args_number] = NULL;
 
-        parallel_command = result;
+        if (parallel_command == NULL) {
+            parallel_command = result;
+        } else {
+            struct ConsoleCommand * next_parallel = parallel_command;
+
+            while (next_parallel->parallel != NULL) {
+                next_parallel = parallel_command->parallel;
+            }
+
+            next_parallel->parallel = result;
+        }
 
         // TODO: HANDLE PARALLEL
     }
