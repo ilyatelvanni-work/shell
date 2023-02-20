@@ -27,8 +27,8 @@ const char CD_COMMAND[] = "cd";
 const char PATH_COMMAND[] = "path";
 const char EXIT_COMMAND_ENTER[] = "exit\n"; // TODO: REMOVE
 
-const int PRINT_LOGS = 0;
-const int PRINT_DEBUG = 0;
+const int PRINT_LOGS = 1;
+const int PRINT_DEBUG = 1;
 
 char DEFAULT_PATH_1[] = "/bin";
 char DEFAULT_PATH_2[] = "/usr/bin";
@@ -435,6 +435,7 @@ int execute_command_line(const char * const line) {
 
         for (command_ptr = &command;command_ptr != NULL;command_ptr = (*command_ptr).parallel) {
             command_ptr->handled = 0;
+            if (PRINT_LOGS && PRINT_DEBUG) printf("DEBUG: command in %p", command_ptr);
             handled_desirable++;
         }
 
@@ -448,7 +449,7 @@ int execute_command_line(const char * const line) {
 
                 if (result == -1 && command_ptr->handled == 0) {
                     return -1;
-                } else if (result == 0 || command_ptr->handled == 1) {
+                } else if (command_ptr->handled == 1) {
                     continue;
                 } else {
                     if (!*command_ptr->result->is_done) {
