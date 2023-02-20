@@ -168,11 +168,11 @@ struct ConsoleCommand parse_command(const char * const line) {
         struct ConsoleCommand * result = malloc(sizeof(struct ConsoleCommand));
         (*result).redirection = NULL;
         (*result).parallel = NULL;
-        if (PRINT_LOGS && PRINT_DEBUG) printf("generated command in '%p' refers to parallel command in '%p'\n", result, parallel_command);
+
+        if (PRINT_LOGS && PRINT_DEBUG) printf("generated command in '%p'. Root command in '%p'\n", result, parallel_command);
 
         if (strcmp(tokens[0], " ") == 0) {
             (*result).command = tokens[0];
-            if (PRINT_LOGS) printf("\n");
 
             if (parallel_command == NULL) {
                 parallel_command = result;
@@ -180,7 +180,7 @@ struct ConsoleCommand parse_command(const char * const line) {
                 struct ConsoleCommand * next_parallel = parallel_command;
 
                 while (next_parallel->parallel != NULL) {
-                    next_parallel = parallel_command->parallel;
+                    next_parallel = next_parallel->parallel;
                 }
 
                 next_parallel->parallel = result;
@@ -243,7 +243,7 @@ struct ConsoleCommand parse_command(const char * const line) {
             struct ConsoleCommand * next_parallel = parallel_command;
 
             while (next_parallel->parallel != NULL) {
-                next_parallel = parallel_command->parallel;
+                next_parallel = next_parallel->parallel;
             }
 
             next_parallel->parallel = result;
@@ -378,6 +378,7 @@ void execute_command(struct ConsoleCommand * command) {
         if (PRINT_LOGS) printf("skip empty command execution\n\n");
 
         *(execution_result->is_done) = 1;
+        *(execution_result->result) = 1;
         command->result = execution_result;
         return;
     }
